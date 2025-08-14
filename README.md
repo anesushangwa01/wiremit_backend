@@ -62,7 +62,7 @@ Create a `.env` file in the project root:
 
 ```env
 DEBUG=True
-SECRET_KEY=your_secret_key_here
+
 DATABASE_URL=postgres://user:password@localhost:5432/yourdb or 
 DATABASES = {
     'default': {
@@ -74,10 +74,8 @@ DATABASES = {
     }
 }
 
-FASTFOREX_KEY=your_fastforex_api_key
-APILAYER_KEY=your_apilayer_api_key
 
-MARKUP_RATE=0.10
+
 ```
 
 ## Running the API
@@ -102,7 +100,7 @@ Content-Type: application/json
 
 {
   "username": "youruser",
-  "email": "123xc",
+  "email": "a123@gmail.com",
   "password": "yourpassword"
 }
 ```
@@ -128,31 +126,9 @@ Response:
 }
 ```
 
-Access protected endpoints using the Authorization header:
 
-```http
-GET /api/rates/
-Authorization: Bearer ACCESS_TOKEN
-```
 
-Refresh access token:
 
-```http
-POST /api/token/refresh/
-Content-Type: application/json
-
-{
-  "refresh": "REFRESH_TOKEN"
-}
-```
-
-Response:
-
-```json
-{
-  "access": "NEW_ACCESS_TOKEN"
-}
-```
 
 ## Rate Aggregation Logic
 
@@ -173,5 +149,5 @@ When API endpoints are called, rates are auto-refreshed if older than 1 hour.
 | `/api/rates/` | GET | Returns the latest rates for all currency pairs. Optional query params: base, target. |
 | `/api/rates/{currency}/` | GET | Returns latest rates where {currency} is the base or target. |
 | `/api/rates/historical/` | GET | Returns all historical rates. |
-| `/api/token/` | POST | Obtain JWT access and refresh tokens. |
-| `/api/token/refresh/` | POST | Refresh JWT access token using the refresh token. |
+| `/api/user/register` | POST | allow user to register for new account |
+| `/api/users/login` | POST | allow user to login after register |
