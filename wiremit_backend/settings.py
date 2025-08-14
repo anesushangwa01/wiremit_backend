@@ -20,7 +20,8 @@ load_dotenv()
 
 # Access them
 CURRENCYFREAKS_KEY = os.getenv("CURRENCYFREAKS_KEY")
-EXCHANGERATEAPI_KEY = os.getenv("EXCHANGERATEAPI_KEY")
+FASTFOREX_KEY = os.getenv("FASTFOREX_KEY")
+APILAYER_KEY = os.getenv("APILAYER_KEY")
 MARKUP_RATE = float(os.getenv("MARKUP_RATE", 0.10))
 
 
@@ -54,6 +55,7 @@ if extra_hosts:
 
 
 # Application definition
+
 
 INSTALLED_APPS = [
     'django.contrib.admin',
