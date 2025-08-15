@@ -149,5 +149,5 @@ When API endpoints are called, rates are auto-refreshed if older than 1 hour.
 | `/api/rates/` | GET | Returns the latest rates for all currency pairs. Optional query params: base, target. |
 | `/api/rates/{currency}/` | GET | Returns latest rates where {currency} is the base or target. |
 | `/api/rates/historical/` | GET | Returns all historical rates. |
-| `/api/user/register` | POST | allow user to register for new account |
-| `/api/users/login` | POST | allow user to login after register |
+| `/api/register` | POST | allow user to register for new account |
+| `/api/login` | POST | allow user to login after register |
