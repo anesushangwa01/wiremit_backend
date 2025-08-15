@@ -66,9 +66,7 @@ Create a `.env` file in the project root:
 # -----------------------
 CURRENCYFREAKS_KEY=xxxxxiiiiiiassssssss
 FASTFOREX_KEY=xxxxxxxxxxxxxxxxxxxxxxxxx
-APILAYER_KEY=xxxxxxxxxxxxxxxxxxxxxxxxx![WhatsApp Image 2025-08-15 at 12 22 33 PM](https://github.com/user-attachments/assets/1b999b86-fe01-4ecd-9214-2983f1aed682)
-![WhatsApp Image 2025-08-15 at 12 27 52 PM](https://github.com/user-attachments/assets/fc28f78d-4083-407c-99ae-11bce7fed466)
-
+APILAYER_KEY=xxxxxxxxxxxxxxxxxxxxxxxxx!
 
 # -----------------------
 # Markup applied to average rate
@@ -106,10 +104,10 @@ Content-Type: application/json
 }
 ```
 
-Obtain a token:
+user login
 
 ```http
-POST /api/token/
+POST /api/login/
 Content-Type: application/json
 
 {
