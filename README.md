@@ -220,26 +220,5 @@ When API endpoints are called, rates are auto-refreshed if older than 1 hour.
 | `/api/rates/` | GET | Returns the latest rates for all currency pairs. Optional query params: base, target. |
 | `/api/rates/{currency}/` | GET | Returns latest rates where {currency} is the base or target. |
 | `/api/rates/historical/` | GET | Returns all historical rates. |
-| `/api/register` | POST | allow user to register for new account |
-| `/api/login` | POST | allow user to login after register |
-
-## Optional ERD & Component structure & data flow image and a demo video :)
-
-
-![WhatsApp Image 2025-08-15 at 12 27 52 PM](https://github.com/user-attachments/assets/9dda0aed-ca56-481e-bf99-0e806deea8a7)
-
-
-
-
-![WhatsApp Image 2025-08-15 at 12 22 33 PM](https://github.com/user-attachments/assets/363a1d31-9655-44ca-82ed-bf81382b8705)
-
-
-
-
-
-
-
-
-https://github.com/user-attachments/assets/cdf094f6-bcef-4f72-87c5-3aa0b614849a
-
-
+| `/api/token/` | POST | Obtain JWT access and refresh tokens. |
+| `/api/token/refresh/` | POST | Refresh JWT access token using the refresh token. |
