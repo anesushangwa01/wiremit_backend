@@ -61,23 +61,20 @@ python manage.py createsuperuser
 Create a `.env` file in the project root:
 
 ```env
-DEBUG=True
-SECRET_KEY=your_secret_key_here
-DATABASE_URL=postgres://user:password@localhost:5432/yourdb or 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'wiremit',
-        'USER': 'wiremit',
-        'HOST': 'localhost',
-        'PASSWORD': '123',
-    }
-}
+# -----------------------
+# API Keys
+# -----------------------
+CURRENCYFREAKS_KEY=xxxxxiiiiiiassssssss
+FASTFOREX_KEY=xxxxxxxxxxxxxxxxxxxxxxxxx
+APILAYER_KEY=xxxxxxxxxxxxxxxxxxxxxxxxx!
 
-FASTFOREX_KEY=your_fastforex_api_key
-APILAYER_KEY=your_apilayer_api_key
+# -----------------------
+# Markup applied to average rate
+# -----------------------
+MARKUP_RATE=0.10  # e.g., 0.10 = 10% markup
 
-MARKUP_RATE=0.10
+
+
 ```
 
 ## Running the API
@@ -102,15 +99,15 @@ Content-Type: application/json
 
 {
   "username": "youruser",
-  "email": "123xc",
+  "email": "a123@gmail.com",
   "password": "yourpassword"
 }
 ```
 
-Obtain a token:
+user login
 
 ```http
-POST /api/token/
+POST /api/login/
 Content-Type: application/json
 
 {
@@ -127,32 +124,82 @@ Response:
   "refresh": "REFRESH_TOKEN"
 }
 ```
+Fetch all rates
 
-Access protected endpoints using the Authorization header:
 
 ```http
 GET /api/rates/
-Authorization: Bearer ACCESS_TOKEN
+Content-Type: application/json
+ example:
+{
+ "count": 27,
+    "results": [
+        {
+            "id": 150,
+            "base_currency": "USD",
+            "target_currency": "ZAR",
+            "average_rate": "17.568888",
+            "markup_rate": "19.325776",
+            "fetched_at": "2025-08-15T11:28:18.651047+02:00"
+        },
+        {
+            "id": 151,
+            "base_currency": "ZAR",
+            "target_currency": "GBP",
+            "average_rate": "0.042030",
+            "markup_rate": "0.046233",
+            "fetched_at": "2025-08-15T11:28:18.651047+02:00"
+        },
+        {
+            "id": 149,
+            "base_currency": "USD",
+            "target_currency": "GBP",
+            "average_rate": "0.738424",
+            "markup_rate": "0.812267",
+            "fetched_at": "2025-08-15T11:28:18.645168+02:00"
+        },
+}
 ```
 
-Refresh access token:
-
+Fetch all by carrency
 ```http
-POST /api/token/refresh/
+
+GET  /api/rates/USD/
 Content-Type: application/json
 
 {
-  "refresh": "REFRESH_TOKEN"
-}
-```
-
-Response:
-
-```json
 {
-  "access": "NEW_ACCESS_TOKEN"
+    "count": 18,
+    "results": [
+        {
+            "id": 150,
+            "base_currency": "USD",
+            "target_currency": "ZAR",
+            "average_rate": "17.568888",
+            "markup_rate": "19.325776",
+            "fetched_at": "2025-08-15T11:28:18.651047+02:00"
+        },
+        {
+            "id": 149,
+            "base_currency": "USD",
+            "target_currency": "GBP",
+            "average_rate": "0.738424",
+            "markup_rate": "0.812267",
+            "fetched_at": "2025-08-15T11:28:18.645168+02:00"
+        },
+        {
+            "id": 147,
+            "base_currency": "USD",
+            "target_currency": "ZAR",
+            "average_rate": "17.564828",
+            "markup_rate": "19.321310",
+            "fetched_at": "2025-08-15T10:35:37.841958+02:00"
+        }.......
 }
 ```
+
+
+
 
 ## Rate Aggregation Logic
 
@@ -173,5 +220,26 @@ When API endpoints are called, rates are auto-refreshed if older than 1 hour.
 | `/api/rates/` | GET | Returns the latest rates for all currency pairs. Optional query params: base, target. |
 | `/api/rates/{currency}/` | GET | Returns latest rates where {currency} is the base or target. |
 | `/api/rates/historical/` | GET | Returns all historical rates. |
-| `/api/token/` | POST | Obtain JWT access and refresh tokens. |
-| `/api/token/refresh/` | POST | Refresh JWT access token using the refresh token. |
+| `/api/register` | POST | allow user to register for new account |
+| `/api/login` | POST | allow user to login after register |
+
+## Optional ERD & Component structure & data flow image and a demo video :)
+
+
+![WhatsApp Image 2025-08-15 at 12 27 52 PM](https://github.com/user-attachments/assets/9dda0aed-ca56-481e-bf99-0e806deea8a7)
+
+
+
+
+![WhatsApp Image 2025-08-15 at 12 22 33 PM](https://github.com/user-attachments/assets/363a1d31-9655-44ca-82ed-bf81382b8705)
+
+
+
+
+
+
+
+
+https://github.com/user-attachments/assets/cdf094f6-bcef-4f72-87c5-3aa0b614849a
+
+

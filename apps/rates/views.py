@@ -1,107 +1,140 @@
-from rest_framework.decorators import api_view
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
-from django.utils import timezone
-from datetime import timedelta
-from django.db.models import Max
+from django.db.models import Q
+from django.utils.timezone import localtime
+from datetime import datetime, time
 from .models import AggregatedRate
 from .serializers import AggregatedRateSerializer
-from .services import fetch_all_rates
-import logging
+from django.utils import timezone
 
-logger = logging.getLogger(__name__)
 
-# ----------------------------
-# Helper: Ensure recent rates exist
-# ----------------------------
-def ensure_recent_rates():
-    """Fetch rates if there are no records in the last hour."""
-    one_hour_ago = timezone.now() - timedelta(hours=1)
-    if not AggregatedRate.objects.filter(fetched_at__gte=one_hour_ago).exists():
-        try:
-            fetch_all_rates()
-            logger.info("Successfully fetched latest rates.")
-        except Exception as e:
-            logger.error(f"Error fetching rates: {str(e)}")
+def serialize_rates(rates_queryset):
+    """
+    Serialize rates and convert fetched_at to Central Africa Time (CAT)
+    """
+    serialized = AggregatedRateSerializer(rates_queryset, many=True).data
+    for item, obj in zip(serialized, rates_queryset):
+        item['fetched_at'] = localtime(obj.fetched_at).isoformat()
+    return serialized
 
-# ----------------------------
-# /api/rates/?base=&target=
-# Returns latest rates per currency pair
-# ----------------------------
+
 @api_view(['GET'])
+@permission_classes([IsAuthenticated])
 def list_rates(request):
-    ensure_recent_rates()
+    """
+    List all rates (latest first) with count.
+    """
+    rates = AggregatedRate.objects.all().order_by('-fetched_at')
+    serialized = serialize_rates(rates)
+    return Response({
+        "count": rates.count(),
+        "results": serialized
+    })
 
-    # Get latest fetched_at per currency pair
-    latest_per_pair = (
-        AggregatedRate.objects
-        .values('base_currency', 'target_currency')
-        .annotate(latest_fetched=Max('fetched_at'))
-    )
 
-    # Build queryset with only the latest records
-    latest_ids = [
-        AggregatedRate.objects.filter(
-            base_currency=item['base_currency'],
-            target_currency=item['target_currency'],
-            fetched_at=item['latest_fetched']
-        ).values_list('id', flat=True).first()
-        for item in latest_per_pair
-    ]
-
-    queryset = AggregatedRate.objects.filter(id__in=latest_ids)
-
-    # Optional filtering by base or target
-    base = request.GET.get('base')
-    target = request.GET.get('target')
-    if base:
-        queryset = queryset.filter(base_currency=base.upper())
-    if target:
-        queryset = queryset.filter(target_currency=target.upper())
-
-    if not queryset.exists():
-        return Response({"message": "No rates available.", "rates": []})
-
-    serializer = AggregatedRateSerializer(queryset, many=True)
-    return Response(serializer.data)
-
-# ----------------------------
-# /api/rates/{currency}/
-# Returns latest rates where currency is base or target
-# ----------------------------
 @api_view(['GET'])
+@permission_classes([IsAuthenticated])
 def rates_for_currency(request, currency):
-    ensure_recent_rates()
+    """
+    Rates filtered by currency (as base or target) with count.
+    """
     currency = currency.upper()
+    rates = AggregatedRate.objects.filter(
+        Q(base_currency__iexact=currency) | Q(target_currency__iexact=currency)
+    ).order_by('-fetched_at')
 
-    queryset = AggregatedRate.objects.filter(base_currency=currency) | AggregatedRate.objects.filter(target_currency=currency)
-    queryset = queryset.distinct().order_by('-fetched_at')
+    if not rates.exists():
+        return Response({"detail": f"No rates found for currency '{currency}'"}, status=404)
 
-    if not queryset.exists():
-        return Response({"message": f"No rates available for {currency}.", "rates": []})
+    serialized = serialize_rates(rates)
+    return Response({
+        "count": rates.count(),
+        "results": serialized
+    })
 
-    serializer = AggregatedRateSerializer(queryset, many=True)
-    return Response(serializer.data)
 
-# ----------------------------
-# /api/rates/historical/
-# Returns all historical rates from database
-# ----------------------------
 @api_view(['GET'])
-def historical_rates(request):
-    # Ensure there is at least some data
-    if not AggregatedRate.objects.exists():
+@permission_classes([IsAuthenticated])
+def latest_rates_all(request):
+    """
+    Latest rates for all currencies with count.
+    """
+    latest_time = AggregatedRate.objects.order_by('-fetched_at').values_list('fetched_at', flat=True).first()
+    if not latest_time:
+        return Response({"detail": "No rates found."}, status=404)
+
+    rates = AggregatedRate.objects.filter(fetched_at=latest_time).order_by('base_currency', 'target_currency')
+    serialized = serialize_rates(rates)
+    return Response({
+        "count": rates.count(),
+        "results": serialized
+    })
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def latest_rates_currency(request, currency):
+    """
+    Latest rates for a specific currency (base or target) with count.
+    """
+    latest_time = AggregatedRate.objects.order_by('-fetched_at').values_list('fetched_at', flat=True).first()
+    if not latest_time:
+        return Response({"detail": "No rates found."}, status=404)
+
+    currency = currency.upper()
+    rates = AggregatedRate.objects.filter(fetched_at=latest_time).filter(base_currency__iexact=currency) | \
+            AggregatedRate.objects.filter(fetched_at=latest_time, target_currency__iexact=currency)
+    rates = rates.order_by('base_currency', 'target_currency')
+
+    if not rates.exists():
+        return Response({"detail": f"No latest rates found for currency '{currency}'"}, status=404)
+
+    serialized = serialize_rates(rates)
+    return Response({
+        "count": rates.count(),
+        "results": serialized
+    })
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def historical_rates_all(request):
+    """
+    Historical rates with optional filtering by currency and date, with count.
+    Optional query params:
+        ?currency=USD
+        ?date=YYYY-MM-DD (in CAT)
+    """
+    currency = request.GET.get('currency', None)
+    date_str = request.GET.get('date', None)
+    rates = AggregatedRate.objects.all()
+
+    if currency:
+        currency = currency.upper()
+        rates = rates.filter(Q(base_currency__iexact=currency) | Q(target_currency__iexact=currency))
+
+    if date_str:
         try:
-            fetch_all_rates()
-            logger.info("Fetched initial rates for historical view.")
-        except Exception as e:
-            logger.error(f"Error fetching initial rates: {str(e)}")
-            return Response({
-                "message": "No historical rates available. Fetch attempt failed.",
-                "rates": []
-            })
+            local_date = datetime.strptime(date_str, "%Y-%m-%d")
+            tz = timezone.get_current_timezone()  # should be CAT if TIME_ZONE='Africa/Harare'
+            start = timezone.make_aware(datetime.combine(local_date, time.min), tz)
+            end = timezone.make_aware(datetime.combine(local_date, time.max), tz)
+            rates = rates.filter(fetched_at__range=(start, end))
+        except ValueError:
+            return Response({"detail": "Invalid date format. Use YYYY-MM-DD."}, status=400)
 
-    queryset = AggregatedRate.objects.all().order_by('-fetched_at')
+    rates = rates.order_by('-fetched_at', 'base_currency', 'target_currency')
 
-    serializer = AggregatedRateSerializer(queryset, many=True)
-    return Response(serializer.data)
+    if not rates.exists():
+        return Response(
+            {"detail": f"No historical rates found for currency '{currency}' on date '{date_str}'"} 
+            if currency or date_str else {"detail": "No historical rates found."},
+            status=404
+        )
 
+    serialized = serialize_rates(rates)
+    return Response({
+        "count": rates.count(),
+        "results": serialized
+    })

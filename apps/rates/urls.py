@@ -2,12 +2,12 @@ from django.urls import path
 from . import views
 
 urlpatterns = [
-    # List all latest rates, optional ?base=&target=
-    path('rates/', views.list_rates, name='list_rates'),
-
-    # Get all historical rates
-    path('rates/historical/', views.historical_rates, name='historical_rates'),
-
-    # Get all rates for a specific currency
+    path('rates/', views.list_rates, name='list_rates'),  # GET latest aggregated rates
     path('rates/<str:currency>/', views.rates_for_currency, name='rates_for_currency'),
+   
+
+    # Historical rates
+    path('rates/history/', views.historical_rates_all, name='historical_rates_all'),
+  
+
 ]

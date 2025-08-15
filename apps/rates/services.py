@@ -1,117 +1,107 @@
 # apps/rates/services.py
-import os
 import requests
-import logging
-from decimal import Decimal, ROUND_HALF_UP
-from datetime import datetime, timedelta
-from django.utils.timezone import make_aware, now
+from decimal import Decimal
+from django.conf import settings
+from django.utils import timezone
 from .models import AggregatedRate
 
-logger = logging.getLogger(__name__)
+CURRENCYFREAKS_URL = "https://api.currencyfreaks.com/v2.0/rates/latest"
+FASTFOREX_URL = "https://api.fastforex.io/fetch-all"
+APILAYER_URL = "https://api.apilayer.com/exchangerates_data/latest"
 
-# ----------------------------
-# Config
-# ----------------------------
-CURRENCYFREAKS_KEY = os.getenv("CURRENCYFREAKS_KEY")
-FASTFOREX_KEY = os.getenv("FASTFOREX_KEY")
-APILAYER_KEY = os.getenv("APILAYER_KEY")
-MARKUP_RATE = Decimal(str(os.getenv("MARKUP_RATE", 0.10)))
 
-CURRENCY_PAIRS = [
-    ("USD", "GBP"),
-    ("USD", "ZAR"),
-    ("ZAR", "GBP")
-]
-
-# ----------------------------
-# Fetch functions for APIs
-# ----------------------------
-def fetch_currencyfreaks(base, target, date=None):
-    """Fetch rate from CurrencyFreaks. Use date='YYYY-MM-DD' for historical."""
-    url = "https://api.currencyfreaks.com/v2.0/rates/latest" if not date else "https://api.currencyfreaks.com/v2.0/rates/historical"
-    params = {"apikey": CURRENCYFREAKS_KEY}
-    if date:
-        params["date"] = date
+def fetch_rates_from_currencyfreaks():
     try:
-        res = requests.get(url, params=params, timeout=5)
-        res.raise_for_status()
-        rate = Decimal(str(res.json()["rates"][target]))
-        return rate
+        r = requests.get(
+            CURRENCYFREAKS_URL,
+            params={"apikey": settings.CURRENCYFREAKS_KEY, "symbols": "USD,GBP,ZAR"}
+        )
+        data = r.json()
+        if "rates" not in data:
+            raise ValueError(f"No 'rates' key. Full response: {data}")
+        print("CurrencyFreaks fetch successful")
+        return {"USD": Decimal(data["rates"]["USD"]),
+                "GBP": Decimal(data["rates"]["GBP"]),
+                "ZAR": Decimal(data["rates"]["ZAR"])}, True
     except Exception as e:
-        logger.error(f"CurrencyFreaks {('historical ' + date) if date else ''} {base}->{target} error: {e}")
-        return None
+        print("CurrencyFreaks fetch error:", e)
+        return None, False
 
-def fetch_fastforex(base, target, date=None):
-    """Fetch rate from FastForex. date='YYYY-MM-DD' for historical."""
-    url = "https://api.fastforex.io/fetch-multi" if not date else "https://api.fastforex.io/historical"
-    params = {"from": base, "to": target, "api_key": FASTFOREX_KEY}
-    if date:
-        params["date"] = date
+
+def fetch_rates_from_fastforex():
     try:
-        res = requests.get(url, params=params, timeout=5)
-        res.raise_for_status()
-        key = "results" if not date else target
-        rate = Decimal(str(res.json()[key][target])) if not date else Decimal(str(res.json()[target]))
-        return rate
+        r = requests.get(FASTFOREX_URL, params={"api_key": settings.FASTFOREX_KEY})
+        data = r.json().get("results")
+        if not data:
+            raise ValueError(f"No 'results' key. Full response: {r.json()}")
+        print("FastForex fetch successful")
+        return {"USD": Decimal(data["USD"]),
+                "GBP": Decimal(data["GBP"]),
+                "ZAR": Decimal(data["ZAR"])}, True
     except Exception as e:
-        logger.error(f"FastForex {('historical ' + date) if date else ''} {base}->{target} error: {e}")
-        return None
+        print("FastForex fetch error:", e)
+        return None, False
 
-def fetch_apilayer(base, target, date=None):
-    """Fetch rate from APILayer. Use date='YYYY-MM-DD' for historical."""
-    url = "https://api.apilayer.com/exchangerates_data/latest" if not date else f"https://api.apilayer.com/exchangerates_data/{date}"
-    headers = {"apikey": APILAYER_KEY}
-    params = {"base": base, "symbols": target}
+
+def fetch_rates_from_apilayer():
     try:
-        res = requests.get(url, headers=headers, params=params, timeout=5)
-        res.raise_for_status()
-        rate = Decimal(str(res.json()["rates"][target]))
-        return rate
+        headers = {"apikey": settings.APILAYER_KEY}
+        r = requests.get(APILAYER_URL, params={"symbols": "USD,GBP,ZAR", "base": "USD"}, headers=headers)
+        data = r.json().get("rates")
+        if not data:
+            raise ValueError(f"No 'rates' key. Full response: {r.json()}")
+        print("API Layer fetch successful")
+        return {"USD": Decimal("1.0"),
+                "GBP": Decimal(data["GBP"]),
+                "ZAR": Decimal(data["ZAR"])}, True
     except Exception as e:
-        logger.error(f"APILayer {('historical ' + date) if date else ''} {base}->{target} error: {e}")
-        return None
+        print("API Layer fetch error:", e)
+        return None, False
 
-# ----------------------------
-# Main fetch function
-# ----------------------------
-def fetch_all_rates(historical_days=30):
-    """
-    Fetch and save latest rates + historical rates for the last `historical_days`.
-    """
-    saved_count = 0
-    today = datetime.utcnow().date()
 
-    for delta in range(historical_days, -1, -1):
-        fetch_date = today - timedelta(days=delta)
-        fetch_date_str = fetch_date.strftime("%Y-%m-%d")
+def aggregate_and_store_rates():
+    try:
+        api_results = [
+            ("CurrencyFreaks", fetch_rates_from_currencyfreaks()),
+            ("FastForex", fetch_rates_from_fastforex()),
+            ("API Layer", fetch_rates_from_apilayer())
+        ]
 
-        for base, target in CURRENCY_PAIRS:
-            rates = []
+        success_apis = []
+        failed_apis = []
 
-            # Fetch rates from all APIs
-            for fetcher in (fetch_currencyfreaks, fetch_fastforex, fetch_apilayer):
-                rate = fetcher(base, target, date=fetch_date_str if delta != 0 else None)
-                if rate:
-                    rates.append(rate)
-
-            if rates:
-                # Calculate average and markup
-                avg_rate = (sum(rates) / len(rates)).quantize(Decimal("0.000001"), rounding=ROUND_HALF_UP)
-                markup_rate = (avg_rate + MARKUP_RATE).quantize(Decimal("0.000001"), rounding=ROUND_HALF_UP)
-
-                # Determine fetched_at
-                fetched_at = make_aware(datetime.combine(fetch_date, datetime.min.time())) if delta != 0 else now()
-
-                # Save to DB (update if exists)
-                AggregatedRate.objects.update_or_create(
-                    base_currency=base,
-                    target_currency=target,
-                    fetched_at=fetched_at,
-                    defaults={'average_rate': avg_rate, 'markup_rate': markup_rate}
-                )
-                saved_count += 1
-                logger.info(f"Saved {base}->{target} for {fetch_date_str} Avg={avg_rate} Markup={markup_rate}")
+        rates_list = []
+        for api_name, (data, success) in api_results:
+            if success and data:
+                success_apis.append(api_name)
+                rates_list.append(data)
             else:
-                logger.warning(f"No rates fetched for {base}->{target} on {fetch_date_str}")
+                failed_apis.append(api_name)
 
-    logger.info(f"All rates fetched. Total saved: {saved_count}")
+        if not rates_list:
+            print("No valid rates fetched from any API")
+            return False
+
+        pairs = [("USD", "GBP"), ("USD", "ZAR"), ("ZAR", "GBP")]
+
+        for base, target in pairs:
+            pair_rates = [rate_dict[target] / rate_dict[base] for rate_dict in rates_list]
+            avg_rate = sum(pair_rates) / Decimal(len(pair_rates))
+            markup_rate = avg_rate * (Decimal("1.0") + Decimal(str(settings.MARKUP_RATE)))
+
+            AggregatedRate.objects.create(
+                base_currency=base,
+                target_currency=target,
+                average_rate=avg_rate,
+                markup_rate=markup_rate,
+                fetched_at=timezone.now()
+            )
+
+        print(f"Forex rates aggregated and stored successfully.")
+        print(f"APIs fetched successfully: {', '.join(success_apis) if success_apis else 'None'}")
+        print(f"APIs failed: {', '.join(failed_apis) if failed_apis else 'None'}")
+        return True
+
+    except Exception as e:
+        print("Error aggregating rates:", e)
+        return False
