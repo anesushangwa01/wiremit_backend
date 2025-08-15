@@ -61,18 +61,19 @@ python manage.py createsuperuser
 Create a `.env` file in the project root:
 
 ```env
-DEBUG=True
+# -----------------------
+# API Keys
+# -----------------------
+CURRENCYFREAKS_KEY=xxxxxiiiiiiassssssss
+FASTFOREX_KEY=xxxxxxxxxxxxxxxxxxxxxxxxx
+APILAYER_KEY=xxxxxxxxxxxxxxxxxxxxxxxxx![WhatsApp Image 2025-08-15 at 12 22 33 PM](https://github.com/user-attachments/assets/1b999b86-fe01-4ecd-9214-2983f1aed682)
+![WhatsApp Image 2025-08-15 at 12 27 52 PM](https://github.com/user-attachments/assets/fc28f78d-4083-407c-99ae-11bce7fed466)
 
-DATABASE_URL=postgres://user:password@localhost:5432/yourdb or 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'wiremit',
-        'USER': 'wiremit',
-        'HOST': 'localhost',
-        'PASSWORD': '123',
-    }
-}
+
+# -----------------------
+# Markup applied to average rate
+# -----------------------
+MARKUP_RATE=0.10  # e.g., 0.10 = 10% markup
 
 
 
@@ -125,7 +126,76 @@ Response:
   "refresh": "REFRESH_TOKEN"
 }
 ```
+Register a new user:
 
+
+```http
+GET /api/rates/
+Content-Type: application/json
+ example:
+{
+ "count": 27,
+    "results": [
+        {
+            "id": 150,
+            "base_currency": "USD",
+            "target_currency": "ZAR",
+            "average_rate": "17.568888",
+            "markup_rate": "19.325776",
+            "fetched_at": "2025-08-15T11:28:18.651047+02:00"
+        },
+        {
+            "id": 151,
+            "base_currency": "ZAR",
+            "target_currency": "GBP",
+            "average_rate": "0.042030",
+            "markup_rate": "0.046233",
+            "fetched_at": "2025-08-15T11:28:18.651047+02:00"
+        },
+        {
+            "id": 149,
+            "base_currency": "USD",
+            "target_currency": "GBP",
+            "average_rate": "0.738424",
+            "markup_rate": "0.812267",
+            "fetched_at": "2025-08-15T11:28:18.645168+02:00"
+        },
+}
+```
+
+GET  /api/rates/USD/
+Content-Type: application/json
+by carrancy example:
+{
+{
+    "count": 18,
+    "results": [
+        {
+            "id": 150,
+            "base_currency": "USD",
+            "target_currency": "ZAR",
+            "average_rate": "17.568888",
+            "markup_rate": "19.325776",
+            "fetched_at": "2025-08-15T11:28:18.651047+02:00"
+        },
+        {
+            "id": 149,
+            "base_currency": "USD",
+            "target_currency": "GBP",
+            "average_rate": "0.738424",
+            "markup_rate": "0.812267",
+            "fetched_at": "2025-08-15T11:28:18.645168+02:00"
+        },
+        {
+            "id": 147,
+            "base_currency": "USD",
+            "target_currency": "ZAR",
+            "average_rate": "17.564828",
+            "markup_rate": "19.321310",
+            "fetched_at": "2025-08-15T10:35:37.841958+02:00"
+        }.......
+}
+```
 
 
 
@@ -151,3 +221,7 @@ When API endpoints are called, rates are auto-refreshed if older than 1 hour.
 | `/api/rates/historical/` | GET | Returns all historical rates. |
 | `/api/register` | POST | allow user to register for new account |
 | `/api/login` | POST | allow user to login after register |
+
+## Optional ERD & Component structure & data flow.
+![ERD](https://github.com/user-attachments/assets/75c81fb9-36a0-4ac6-b67b-420ec38056d9)
+![Component structure & data flow.](https://github.com/user-attachments/assets/75387986-f25e-43c0-b779-8c0dd5467f9c)
