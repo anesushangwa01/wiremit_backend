@@ -124,7 +124,7 @@ Response:
   "refresh": "REFRESH_TOKEN"
 }
 ```
-Register a new user:
+Fetch all rates
 
 
 ```http
@@ -161,9 +161,12 @@ Content-Type: application/json
 }
 ```
 
+Fetch all by carrency
+```http
+
 GET  /api/rates/USD/
 Content-Type: application/json
-by carrancy example:
+
 {
 {
     "count": 18,
@@ -220,6 +223,24 @@ When API endpoints are called, rates are auto-refreshed if older than 1 hour.
 | `/api/register` | POST | allow user to register for new account |
 | `/api/login` | POST | allow user to login after register |
 
-## Optional ERD & Component structure & data flow.
-![ERD](https://github.com/user-attachments/assets/75c81fb9-36a0-4ac6-b67b-420ec38056d9)
-![Component structure & data flow.](https://github.com/user-attachments/assets/75387986-f25e-43c0-b779-8c0dd5467f9c)
+## Optional ERD & Component structure & data flow image and a demo video :)
+
+
+![WhatsApp Image 2025-08-15 at 12 27 52 PM](https://github.com/user-attachments/assets/9dda0aed-ca56-481e-bf99-0e806deea8a7)
+
+
+
+
+![WhatsApp Image 2025-08-15 at 12 22 33 PM](https://github.com/user-attachments/assets/363a1d31-9655-44ca-82ed-bf81382b8705)
+
+
+
+
+
+
+
+
+https://github.com/user-attachments/assets/cdf094f6-bcef-4f72-87c5-3aa0b614849a
+
+
+
