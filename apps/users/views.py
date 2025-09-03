@@ -1,113 +1,99 @@
 from django.contrib.auth.models import User
+from django.middleware.csrf import get_token
 from rest_framework.response import Response
-from rest_framework.decorators import api_view, permission_classes
+from rest_framework.decorators import api_view, permission_classes, authentication_classes
 from rest_framework.permissions import IsAuthenticated, AllowAny
-
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
-from rest_framework_simplejwt.token_blacklist.models import BlacklistedToken, OutstandingToken
-
+from rest_framework_simplejwt.authentication import JWTAuthentication
+from django.views.decorators.csrf import csrf_exempt
 from .serializers import UserRegisterSerializer, UserSerializer
 
-from datetime import datetime, timedelta
+
+# -------------------------
+# Custom JWT authentication for cookies
+# -------------------------
+class CookiesJWTAuthentication(JWTAuthentication):
+    def authenticate(self, request):
+        access_token = request.COOKIES.get('access_token')
+        if access_token:
+            request.META['HTTP_AUTHORIZATION'] = f'Bearer {access_token}'
+        return super().authenticate(request)
 
 
+# -------------------------
+# User Registration (public)
+# -------------------------
+@csrf_exempt
 @api_view(['POST'])
+@authentication_classes([])  # no auth
 @permission_classes([AllowAny])
 def register(request):
     serializer = UserRegisterSerializer(data=request.data)
     if serializer.is_valid():
         serializer.save()
         return Response(serializer.data)
-    return Response(serializer.error)
+    return Response(serializer.errors)
 
+
+# -------------------------
+# Token Obtain (login)
+# -------------------------
 class CustomTokenObtainPairView(TokenObtainPairView):
     def post(self, request, *args, **kwargs):
-        try:
-            response = super().post(request, *args, **kwargs)
-            tokens = response.data
+        response = super().post(request, *args, **kwargs)
+        tokens = response.data
+        access_token = tokens.get('access')
+        refresh_token = tokens.get('refresh')
 
-            access_token = tokens['access']
-            refresh_token = tokens['refresh']
+        res = Response({'success': True})
+        res.data.update(tokens)
 
-            serializer = UserSerializer(request.user, many=False)
-
-            res = Response()
-
-            res.data = {'success':True}
-
-            res.set_cookie(
-                key='access_token',
-                value=str(access_token),
-                httponly=True,
-                secure=False,  # Changed to False for local development
-                samesite='None',
-                path='/'
-            )
-
-            res.set_cookie(
-                key='refresh_token',
-                value=str(refresh_token),
-                httponly=True,
-                secure=False,  # Changed to False for local development
-                samesite='None',
-                path='/'
-            )
-            res.data.update(tokens)
-            return res
-        
-        except Exception as e:
-            print(e)
-            return Response({'success':False})
-        
-class CustomTokenRefreshView(TokenRefreshView):
-    def post(self, request, *args, **kwargs):
-        try:
-            refresh_token = request.COOKIES.get('refresh_token')
-
-            request.data['refresh'] = refresh_token
-
-            response = super().post(request, *args, **kwargs)
-            
-            tokens = response.data
-            access_token = tokens['access']
-
-            res = Response()
-
-            res.data = {'refreshed': True}
-
-            res.set_cookie(
-                key='access_token',
-                value=access_token,
-                httponly=True,
-                secure=False,
-                samesite='None',
-                path='/'
-            )
-            return res
-
-        except Exception as e:
-            print(e)
-            return Response({'refreshed': False})
-
-
-@api_view(['POST'])
-@permission_classes([IsAuthenticated])
-def logout(request):
-
-    try:
-
-        res = Response()
-        res.data = {'success':True}
-        res.delete_cookie('access_token', path='/', samesite='None')
-        res.delete_cookie('response_token', path='/', samesite='None')
-
+        # Set cookies
+        res.set_cookie('access_token', access_token, httponly=True, secure=False, samesite='None', path='/')
+        res.set_cookie('refresh_token', refresh_token, httponly=True, secure=False, samesite='None', path='/')
+        csrf_token = get_token(request)
+        res.set_cookie('csrf_token', csrf_token, httponly=False, secure=False, samesite='None', path='/')
         return res
 
-    except Exception as e:
-        print(e)
-        return Response({'success':False})
 
+# -------------------------
+# Token Refresh
+# -------------------------
+class CustomTokenRefreshView(TokenRefreshView):
+    def post(self, request, *args, **kwargs):
+        refresh_token = request.COOKIES.get('refresh_token')
+        if not refresh_token:
+            return Response({'refreshed': False, 'error': 'No refresh token'})
+        request.data['refresh'] = refresh_token
+        response = super().post(request, *args, **kwargs)
+        tokens = response.data
+        access_token = tokens.get('access')
+        res = Response({'refreshed': True})
+        if access_token:
+            res.set_cookie('access_token', access_token, httponly=True, secure=False, samesite='None', path='/')
+        return res
+
+
+# -------------------------
+# Logout (requires JWT cookie)
+# -------------------------
+@csrf_exempt  # local dev only
+@api_view(['POST'])
+@authentication_classes([CookiesJWTAuthentication])
+@permission_classes([IsAuthenticated])
+def logout(request):
+    res = Response({'success': True})
+    res.delete_cookie('access_token', path='/', samesite='None')
+    res.delete_cookie('refresh_token', path='/', samesite='None')
+    res.delete_cookie('csrf_token', path='/', samesite='None')
+    return res
+
+
+# -------------------------
+# Check login status
+# -------------------------
 @api_view(['GET'])
+@authentication_classes([CookiesJWTAuthentication])
 @permission_classes([IsAuthenticated])
 def is_logged_in(request):
     serializer = UserSerializer(request.user, many=False)

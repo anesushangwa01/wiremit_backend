@@ -1,24 +1,75 @@
-import threading
-import time
-from django.utils import timezone
+from apscheduler.schedulers.background import BackgroundScheduler
 from apps.rates.services import aggregate_and_store_rates
+import threading
+import logging
 
-def start_auto_fetch(interval_minutes=5):
-    """Start a background thread that fetches forex rates automatically."""
-    def fetch_loop():
-        while True:
-            try:
-                now = timezone.now()
-                print(f"[{now}] Running automatic forex rate fetch...")
-                success = aggregate_and_store_rates()
-                if success:
-                    print(f"[{now}] Forex rates fetched and stored successfully.")
+# -------------------------------
+# Logger Setup (single logger)
+# -------------------------------
+logger = logging.getLogger("forex_scheduler")
+logger.setLevel(logging.INFO)
+
+# File logging
+file_handler = logging.FileHandler("forex_aggregation.log")
+formatter = logging.Formatter("%(asctime)s [%(levelname)s] %(message)s")
+file_handler.setFormatter(formatter)
+logger.addHandler(file_handler)
+
+# Console logging
+console_handler = logging.StreamHandler()
+console_handler.setFormatter(formatter)
+logger.addHandler(console_handler)
+
+# -------------------------------
+# Scheduler Duplicate Prevention
+# -------------------------------
+scheduler_started = False
+
+# -------------------------------
+# Threaded Aggregation
+# -------------------------------
+def run_aggregate_sync():
+    def task():
+        logger.info("Starting scheduled forex rate aggregation...")
+        try:
+            result, api_status = aggregate_and_store_rates()
+            for api_name, status, message in api_status:
+                if status:
+                    logger.info(f"{api_name} fetch successful: {message}")
                 else:
-                    print(f"[{now}] Failed to fetch forex rates.")
-            except Exception as e:
-                print(f"[{timezone.now()}] Error fetching rates: {e}")
-            time.sleep(interval_minutes * 60)  # wait before next fetch
+                    logger.warning(f"{api_name} fetch failed: {message}")
 
-    thread = threading.Thread(target=fetch_loop, daemon=True)
-    thread.start()
-    print(f"[{timezone.now()}] Auto-fetch thread started, interval = {interval_minutes} minutes")
+            if result:
+                logger.info("Forex rates aggregated and stored successfully.")
+            else:
+                logger.warning("Aggregation completed but no rates were stored.")
+        except Exception as e:
+            logger.exception(f"Unexpected error during forex rate aggregation: {e}")
+
+    threading.Thread(target=task, daemon=True).start()
+
+# -------------------------------
+# Scheduler Starter
+# -------------------------------
+def start_scheduler(interval_minutes=1):
+    global scheduler_started
+    if scheduler_started:
+        logger.info("Scheduler already running. Skipping start.")
+        return
+    scheduler_started = True
+
+    scheduler = BackgroundScheduler(timezone="Africa/Harare")
+    try:
+        scheduler.add_job(
+            run_aggregate_sync,
+            "interval",
+            minutes=interval_minutes,
+            id="fetch_rates",
+            replace_existing=True,
+            coalesce=True,
+            max_instances=1,
+        )
+        scheduler.start()
+        logger.info(f"APScheduler started, running every {interval_minutes} minutes")
+    except Exception as e:
+        logger.exception(f"Failed to start APScheduler: {e}")
