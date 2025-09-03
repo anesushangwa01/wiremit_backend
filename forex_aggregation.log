@@ -1,0 +1,22 @@
+2025-09-03 12:19:18,202 [INFO] APScheduler started, running every 1 minutes
+2025-09-03 12:19:19,478 [INFO] APScheduler started, running every 1 minutes
+2025-09-03 12:20:18,225 [INFO] Starting scheduled forex rate aggregation...
+2025-09-03 12:20:19,495 [INFO] Starting scheduled forex rate aggregation...
+2025-09-03 12:20:20,147 [INFO] CurrencyFreaks fetch successful: Fetched rates successfully
+2025-09-03 12:20:20,147 [WARNING] FastForex fetch failed: No 'results' key. Full response: {'error': 'API key no longer active'}
+2025-09-03 12:20:20,147 [WARNING] API Layer fetch failed: No 'rates' key. Full response: {'message': 'You have exceeded your daily/monthly API rate limit. Please review and upgrade your subscription plan at https://promptapi.com/subscriptions to continue.'}
+2025-09-03 12:20:20,147 [INFO] Forex rates aggregated and stored successfully.
+2025-09-03 12:20:21,187 [INFO] CurrencyFreaks fetch successful: Fetched rates successfully
+2025-09-03 12:20:21,187 [WARNING] FastForex fetch failed: No 'results' key. Full response: {'error': 'API key no longer active'}
+2025-09-03 12:20:21,187 [WARNING] API Layer fetch failed: No 'rates' key. Full response: {'message': 'You have exceeded your daily/monthly API rate limit. Please review and upgrade your subscription plan at https://promptapi.com/subscriptions to continue.'}
+2025-09-03 12:20:21,187 [INFO] Forex rates aggregated and stored successfully.
+2025-09-03 12:21:18,218 [INFO] Starting scheduled forex rate aggregation...
+2025-09-03 12:21:19,482 [INFO] Starting scheduled forex rate aggregation...
+2025-09-03 12:21:19,675 [INFO] CurrencyFreaks fetch successful: Fetched rates successfully
+2025-09-03 12:21:19,675 [WARNING] FastForex fetch failed: No 'results' key. Full response: {'error': 'API key no longer active'}
+2025-09-03 12:21:19,675 [WARNING] API Layer fetch failed: No 'rates' key. Full response: {'message': 'You have exceeded your daily/monthly API rate limit. Please review and upgrade your subscription plan at https://promptapi.com/subscriptions to continue.'}
+2025-09-03 12:21:19,675 [INFO] Forex rates aggregated and stored successfully.
+2025-09-03 12:21:21,186 [INFO] CurrencyFreaks fetch successful: Fetched rates successfully
+2025-09-03 12:21:21,186 [WARNING] FastForex fetch failed: No 'results' key. Full response: {'error': 'API key no longer active'}
+2025-09-03 12:21:21,186 [WARNING] API Layer fetch failed: No 'rates' key. Full response: {'message': 'You have exceeded your daily/monthly API rate limit. Please review and upgrade your subscription plan at https://promptapi.com/subscriptions to continue.'}
+2025-09-03 12:21:21,186 [INFO] Forex rates aggregated and stored successfully.

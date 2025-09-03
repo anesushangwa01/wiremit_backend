@@ -53,8 +53,11 @@ extra_hosts = os.getenv('ALLOWED_HOSTS', '')
 if extra_hosts:
     ALLOWED_HOSTS.extend([host.strip() for host in extra_hosts.split(',')])
 
+SCHEDULER_AUTOSTART = True
 
-# Application definition
+
+
+
 
 
 INSTALLED_APPS = [
